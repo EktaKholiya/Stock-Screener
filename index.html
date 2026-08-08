@@ -14,7 +14,6 @@ label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}input,sel
 .banner{padding:10px 12px;border-radius:9px;margin-bottom:15px;background:#18243b;border:1px solid var(--line)}.green{color:var(--green)}.red{color:var(--red)}.yellow{color:var(--yellow)}
 .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px}.toolbar input{max-width:240px}.toolbar select{max-width:200px}
 .tablewrap{max-height:650px;overflow:auto;border:1px solid var(--line);border-radius:10px}.table{width:100%;border-collapse:collapse;min-width:1050px}.table th,.table td{padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}.table th:first-child,.table td:first-child{text-align:left}.table th{position:sticky;top:0;background:#121d31;color:var(--muted);font-size:11px;z-index:1}.up{color:var(--green)}.down{color:var(--red)}.neutral{color:var(--muted)}.tag{padding:4px 7px;border-radius:6px;background:#273652;font-size:11px}.log{height:190px;overflow:auto;background:#070c16;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px ui-monospace,monospace;white-space:pre-wrap}.progress{height:8px;background:#202d45;border-radius:99px;overflow:hidden;margin-top:8px}.bar{height:100%;width:0;background:var(--blue);transition:width .2s}.raw{display:none;margin-top:10px;max-height:250px;overflow:auto;background:#070c16;padding:10px;border-radius:8px;font:11px ui-monospace,monospace;white-space:pre-wrap}
-.sideToggle{width:auto;margin:0}.layout.sidebar-collapsed{grid-template-columns:1fr}.layout.sidebar-collapsed aside{display:none}
 @media(max-width:950px){.layout{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -22,7 +21,7 @@ label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}input,sel
 <div class="wrap">
 <header>
   <div><h1>📊 CE Heatmap Scanner — V3 / Step 1</h1><div class="sub">First goal: load the complete NSE stock-futures heatmap. No CE filters yet.</div></div>
-  <div style="display:flex;gap:8px;align-items:center"><button class="secondary sideToggle" onclick="toggleSidebar()">☰ Controls</button><div class="pill" id="status">● Not connected</div></div>
+  <div class="pill" id="status">● Not connected</div>
 </header>
 
 <div class="banner" id="banner">Step 1 only: <b>Get all F&O stocks and their futures market data.</b> Filters, PCR, IV and Max Pain are deliberately disabled.</div>
@@ -33,10 +32,9 @@ label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}input,sel
     <h2>🔐 Upstox</h2>
     <label>Analytics Token</label>
     <input id="token" type="password" placeholder="Paste token here">
-    <label style="display:flex;gap:8px;align-items:center;color:#eef3ff;margin-top:8px"><input id="saveToken" type="checkbox" style="width:auto"> Save token in this browser</label>
     <button onclick="checkMarket()">Check Market + Date</button>
     <button onclick="loadHeatmap()">🔥 Load ALL Stock Futures</button>
-    <div class="note">If “Save token” is enabled, the token is stored in this browser's localStorage. Use it only on a private/trusted computer. Do not share the HTML file with your token embedded in it.</div>
+    <div class="note">Your token is used only in this browser tab. Do not send it to me or anyone else.</div>
   </div>
 
   <div class="panel">
@@ -98,11 +96,11 @@ label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}input,sel
     </tr></thead>
     <tbody id="tbody"><tr><td colspan="10" style="text-align:center;padding:30px;color:#98a6c1">No data yet.</td></tr></tbody>
   </table></div>
-  <div class="note">* OI % is calculated only when both target-session and previous-session OI are available. We do not invent values. In Step 1, this is raw heatmap data only. If many rows show “fetch failed”, use Show/Hide raw diagnostics; the exact HTTP/CORS/API reason is now recorded there.</div>
+  <div class="note">* OI % is calculated only when both target-session and previous-session OI are available. We do not invent values. In Step 1, this is raw heatmap data only.</div>
   <div class="raw" id="raw"></div>
 </div>
 
-<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2 style="margin:0">📝 API Log</h2><button class="secondary copyBtn" onclick="copyLog()">📋 Copy Log</button></div><div class="log" id="log">Ready.</div></div>
+<div class="panel"><h2>📝 API Log</h2><div class="log" id="log">Ready.</div></div>
 </main>
 </div>
 </div>
@@ -126,47 +124,13 @@ function pct(v){return v==null?'—':(v>=0?'+':'')+Number(v).toFixed(2)+'%'}
 function setProgress(done,total,text){document.getElementById('bar').style.width=(total?Math.min(100,done/total*100):0)+'%';document.getElementById('progressText').textContent=text}
 
 async function api(base,path,label){
-  calls++;
-  let r;
-  try{
-    r=await fetch(base+path,{headers:hdr()});
-  }catch(e){
-    raw.push({label,path,status:'FETCH_FAILED',response:String(e)});
-    throw Error(label+' — browser/network fetch failed. Check CORS, URL and internet connection.');
-  }
-  let t=await r.text(),d;
-  try{d=JSON.parse(t)}catch{d={raw:t}}
+  calls++;let r=await fetch(base+path,{headers:hdr()});let t=await r.text();let d;try{d=JSON.parse(t)}catch{throw Error(label+' returned non-JSON HTTP '+r.status)}
   raw.push({label,path,status:r.status,response:d});
-  if(!r.ok){
-    const msg=d?.errors?.[0]?.message||d?.message||d?.error||('HTTP '+r.status);
-    throw Error(label+' — '+msg);
-  }
+  if(!r.ok)throw Error((d.errors?.[0]?.message)||d.message||label+' HTTP '+r.status);
   return d;
 }
 
-function initToken(){
-  try{
-    const saved=localStorage.getItem('upstox_heatmap_token');
-    if(saved){document.getElementById('token').value=saved;document.getElementById('saveToken').checked=true;log('Saved token loaded from this browser.')}
-  }catch(e){log('Token storage unavailable in this browser.')}
-}
-function persistToken(){
-  try{
-    if(document.getElementById('saveToken').checked) localStorage.setItem('upstox_heatmap_token',document.getElementById('token').value.trim());
-    else localStorage.removeItem('upstox_heatmap_token');
-  }catch(e){log('Could not save token locally.')}
-}
-document.addEventListener('DOMContentLoaded',initToken);
-document.addEventListener('change',e=>{if(e.target.id==='saveToken')persistToken()});
-document.getElementById('token')?.addEventListener('input',()=>{if(document.getElementById('saveToken')?.checked)persistToken()});
-function toggleSidebar(){document.querySelector('.layout').classList.toggle('sidebar-collapsed')}
-async function copyLog(){
-  const text=document.getElementById('log').textContent;
-  try{await navigator.clipboard.writeText(text);log('API log copied to clipboard.')}
-  catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();log('API log copied to clipboard.')}
-}
 async function checkMarket(){
-  persistToken();
   if(!tok())return alert('Paste your Upstox Analytics Token first.');
   try{
     const d=await api(V2,'/market/status/NSE','Market status');const s=d?.data?.status||'UNKNOWN';
@@ -265,10 +229,8 @@ function chooseFutures(arr,target){
 }
 
 async function historical(key,to,from){
-  // Upstox V2 daily endpoint. This matches the endpoint that already
-  // successfully returned the user's Nifty 50 historical candle.
-  const p='/historical-candle/'+encodeURIComponent(key)+'/day/'+to+'/'+from;
-  return api(V2,p,'Historical '+key);
+  const p='/historical-candle/'+encodeURIComponent(key)+'/days/1/'+to+'/'+from;
+  return api(V3,p,'Historical '+key);
 }
 async function findLastSession(){
   for(let i=1;i<=15;i++){
@@ -293,7 +255,6 @@ async function getTarget(){
 function previousCalendar(date){return localISO(add(new Date(date+'T12:00:00'),-1))}
 
 async function loadHeatmap(){
-  persistToken();
   if(!tok())return alert('Paste your Upstox Analytics Token first.');
   DATA=[];raw=[];calls=0;render();setProgress(0,1,'Starting…');
   setStatus('Loading…');document.getElementById('success').textContent='0';document.getElementById('fail').textContent='0';
@@ -307,13 +268,11 @@ async function loadHeatmap(){
 
     const marketOpen=(await api(V2,'/market/status/NSE','Market status'))?.data?.status==='NORMAL_OPEN';
     const previous=previousCalendar(target);
-    // Shared counters for both live and historical branches.
-    let ok=0, fail=0;
 
     // Current open: full quote gives live LTP, net change, OI and volume.
-    // Closed/historical: V2 daily candles give target and previous-session OHLC/OI.
+    // Closed/historical: V3 daily candles give target and previous-session OHLC/OI.
     if(marketOpen && target===localISO(new Date())){
-      const batch=450;let done=0;
+      const batch=450;let done=0,ok=0,fail=0;
       for(let i=0;i<futs.length;i+=batch){
         const part=futs.slice(i,i+batch);
         const keys=part.map(x=>x.instrument_key).join(',');
@@ -322,7 +281,7 @@ async function loadHeatmap(){
           const map=q?.data||{};
           for(const f of part){
             const key=f.instrument_key, v=map[key]||map[key.replace('|',':')]||Object.values(map).find(z=>z.instrument_token===key);
-            if(!v){fail++;log(f.underlying_symbol+': no quote returned');continue}
+            if(!v){fail++;continue}
             const lp=Number(v.last_price), nc=Number(v.net_change), prevClose=lp-nc;
             DATA.push({symbol:f.underlying_symbol,contract:f.trading_symbol,expiry:(expiryMs(f)?new Date(expiryMs(f)).toLocaleDateString('en-IN'):'—'),price:lp,pricePct:prevClose?nc/prevClose*100:null,oi:Number(v.oi)||null,oiPct:null,volume:Number(v.volume)||null,session:target,source:'Live full quote',key});
             ok++;
@@ -332,7 +291,7 @@ async function loadHeatmap(){
         document.getElementById('success').textContent=ok;document.getElementById('fail').textContent=fail;render();
       }
     }else{
-      let done=0;
+      let done=0,ok=0,fail=0;
       const concurrency=6;
       for(let i=0;i<futs.length;i+=concurrency){
         const part=futs.slice(i,i+concurrency);
