@@ -3,243 +3,381 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CE Heatmap Scanner — Upstox V2</title>
+<title>CE Heatmap Scanner — V3 Step 1</title>
 <style>
-:root{--bg:#09101d;--panel:#111b2e;--panel2:#18243b;--text:#eef3ff;--muted:#98a6c1;--line:#2a3854;--blue:#5d8dff;--green:#27c487;--yellow:#e7b84b;--red:#ff657a}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,Roboto,Arial}.wrap{max-width:1500px;margin:auto;padding:22px}
-.top{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:16px}h1{font-size:24px;margin:0}.sub{color:var(--muted);margin-top:5px}.status{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
-.grid{display:grid;grid-template-columns:330px 1fr;gap:16px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}.panel h2{font-size:15px;margin:0 0 12px}
-.field{margin:10px 0}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}
-input,select,button{width:100%;border:1px solid var(--line);border-radius:8px;background:#0b1425;color:var(--text);padding:9px 10px}input[type=checkbox]{width:auto}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}
-button{cursor:pointer;background:var(--blue);border:0;font-weight:650}.secondary{background:#273652}.danger{background:#5b2634}
-.note{color:var(--muted);font-size:12px;line-height:1.5;margin-top:10px}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}.stat b{font-size:19px}.stat span{display:block;color:var(--muted);font-size:11px;margin-top:4px}
-.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:980px}.table th,.table td{padding:10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.table th:first-child,.table td:first-child{text-align:left}.table th{color:var(--muted);font-size:11px;text-transform:uppercase}
-.good{color:var(--green)}.warn{color:var(--yellow)}.bad{color:var(--red)}.badge{padding:4px 7px;border-radius:6px;background:#183d32;color:#72e4b4;font-size:11px}.badge.gray{background:#27334d;color:#b8c3da}
-.log{height:220px;overflow:auto;background:#070c16;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px ui-monospace,monospace;white-space:pre-wrap}.section{margin-top:16px}.small{font-size:11px;color:var(--muted)}
-.banner{display:none;padding:10px 12px;border-radius:9px;margin-bottom:16px;background:#332b16;border:1px solid #6c5b28;color:#f0d782}.banner.show{display:block}
-.raw{display:none;margin-top:12px;background:#080e19;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px ui-monospace,monospace;white-space:pre-wrap;max-height:300px;overflow:auto}
-@media(max-width:950px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+:root{--bg:#09101d;--panel:#111b2e;--panel2:#17243b;--text:#eef3ff;--muted:#98a6c1;--line:#2a3854;--blue:#5d8dff;--green:#27c487;--red:#ff657a;--yellow:#e7b84b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,Roboto,Arial}.wrap{max-width:1550px;margin:auto;padding:20px}
+header{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:16px}h1{font-size:23px;margin:0}.sub{color:var(--muted);margin-top:4px}.pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
+.layout{display:grid;grid-template-columns:320px 1fr;gap:15px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px;margin-bottom:15px}.panel h2{font-size:15px;margin:0 0 12px}
+label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}input,select,button{width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:#0b1425;color:var(--text)}button{background:var(--blue);border:0;font-weight:650;cursor:pointer;margin-top:9px}.secondary{background:#273652}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.note{color:var(--muted);font-size:12px;line-height:1.5;margin-top:9px}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:15px}.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px}.stat b{font-size:18px}.stat span{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.banner{padding:10px 12px;border-radius:9px;margin-bottom:15px;background:#18243b;border:1px solid var(--line)}.green{color:var(--green)}.red{color:var(--red)}.yellow{color:var(--yellow)}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px}.toolbar input{max-width:240px}.toolbar select{max-width:200px}
+.tablewrap{max-height:650px;overflow:auto;border:1px solid var(--line);border-radius:10px}.table{width:100%;border-collapse:collapse;min-width:1050px}.table th,.table td{padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}.table th:first-child,.table td:first-child{text-align:left}.table th{position:sticky;top:0;background:#121d31;color:var(--muted);font-size:11px;z-index:1}.up{color:var(--green)}.down{color:var(--red)}.neutral{color:var(--muted)}.tag{padding:4px 7px;border-radius:6px;background:#273652;font-size:11px}.log{height:190px;overflow:auto;background:#070c16;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px ui-monospace,monospace;white-space:pre-wrap}.progress{height:8px;background:#202d45;border-radius:99px;overflow:hidden;margin-top:8px}.bar{height:100%;width:0;background:var(--blue);transition:width .2s}.raw{display:none;margin-top:10px;max-height:250px;overflow:auto;background:#070c16;padding:10px;border-radius:8px;font:11px ui-monospace,monospace;white-space:pre-wrap}
+.sideToggle{width:auto;margin:0}.layout.sidebar-collapsed{grid-template-columns:1fr}.layout.sidebar-collapsed aside{display:none}
+@media(max-width:950px){.layout{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="top">
-    <div><h1>📊 CE Heatmap Scanner — V2</h1><div class="sub">Upstox market-data scanner • read-only • no order placement</div></div>
-    <div class="status" id="status">● Disconnected</div>
+<header>
+  <div><h1>📊 CE Heatmap Scanner — V3 / Step 1</h1><div class="sub">First goal: load the complete NSE stock-futures heatmap. No CE filters yet.</div></div>
+  <div style="display:flex;gap:8px;align-items:center"><button class="secondary sideToggle" onclick="toggleSidebar()">☰ Controls</button><div class="pill" id="status">● Not connected</div></div>
+</header>
+
+<div class="banner" id="banner">Step 1 only: <b>Get all F&O stocks and their futures market data.</b> Filters, PCR, IV and Max Pain are deliberately disabled.</div>
+
+<div class="layout">
+<aside>
+  <div class="panel">
+    <h2>🔐 Upstox</h2>
+    <label>Analytics Token</label>
+    <input id="token" type="password" placeholder="Paste token here">
+    <label style="display:flex;gap:8px;align-items:center;color:#eef3ff;margin-top:8px"><input id="saveToken" type="checkbox" style="width:auto"> Save token in this browser</label>
+    <button onclick="checkMarket()">Check Market + Date</button>
+    <button onclick="loadHeatmap()">🔥 Load ALL Stock Futures</button>
+    <div class="note">If “Save token” is enabled, the token is stored in this browser's localStorage. Use it only on a private/trusted computer. Do not share the HTML file with your token embedded in it.</div>
   </div>
 
-  <div class="banner" id="marketBanner"></div>
-
-  <div class="grid">
-    <aside>
-      <div class="panel">
-        <h2>🔐 Upstox</h2>
-        <div class="field"><label>Analytics Token — never share it</label><input id="token" type="password" placeholder="Paste token here"></div>
-        <div class="buttons"><button onclick="testConnection()">Test API</button><button onclick="scan()">🔄 Run Scan</button></div>
-        <div class="note">Token stays only in this page's memory. For the final version we'll move API calls to a Python backend.</div>
-      </div>
-
-      <div class="panel section">
-        <h2>📅 Data Mode</h2>
-        <div class="field"><label>Mode</label>
-          <select id="modeSelect" onchange="modeChanged()">
-            <option value="smart">Latest Smartlist (live/session)</option>
-            <option value="historical">Historical candles</option>
-            <option value="diagnostic">Diagnostics only</option>
-          </select>
-        </div>
-        <div class="field" id="dateField" style="display:none"><label>Trading date (YYYY-MM-DD)</label><input id="tradeDate" type="date"></div>
-        <div class="note">
-          When NSE is closed, Smartlist may return no ranked candidates. Historical mode is intended to verify the data pipeline against a completed session. Option-chain snapshot reconstruction is a separate step.
-        </div>
-      </div>
-
-      <div class="panel section">
-        <h2>⚙️ CE Filters</h2>
-        <div class="row">
-          <div class="field"><label>Min price %</label><input id="minPrice" type="number" step=".1" value="1"></div>
-          <div class="field"><label>Min OI %</label><input id="minOI" type="number" step=".1" value="3"></div>
-        </div>
-        <div class="row">
-          <div class="field"><label>Min PCR</label><input id="minPCR" type="number" step=".01" value=".75"></div>
-          <div class="field"><label>Max PCR</label><input id="maxPCR" type="number" step=".01" value="1.30"></div>
-        </div>
-        <div class="row">
-          <div class="field"><label>Max IVP</label><input id="maxIVP" type="number" step="1" value="70"></div>
-          <div class="field"><label>Top N</label><input id="topN" type="number" step="1" value="10"></div>
-        </div>
-        <div class="field"><label><input id="requireBoth" type="checkbox" checked> Require price-gainer + OI-gainer overlap</label></div>
-        <div class="field"><label><input id="requirePCR" type="checkbox" checked> Apply PCR filter when available</label></div>
-        <div class="field"><label><input id="requireMaxPain" type="checkbox"> Require price above Max Pain</label></div>
-        <button class="secondary" onclick="saveFilters()">Save filter values for this tab</button>
-      </div>
-
-      <div class="panel section">
-        <h2>🧪 Diagnostics</h2>
-        <button class="secondary" onclick="toggleRaw()">Show/Hide raw API diagnostics</button>
-        <div class="note">Use this when comparing values with Sensibull. It helps us identify whether a mismatch is data, symbol mapping, or calculation logic.</div>
-      </div>
-    </aside>
-
-    <main>
-      <div class="stats">
-        <div class="stat"><b id="count">0</b><span>CE candidates</span></div>
-        <div class="stat"><b id="overlap">0</b><span>Price + OI overlap</span></div>
-        <div class="stat"><b id="apiCalls">0</b><span>API calls</span></div>
-        <div class="stat"><b id="updated">—</b><span>Last update</span></div>
-        <div class="stat"><b id="dataMode">—</b><span>Data mode</span></div>
-      </div>
-
-      <div class="panel">
-        <h2>🔥 CE Candidates</h2>
-        <div class="small" id="description">Enter token and run a scan.</div>
-        <div class="tablewrap">
-          <table class="table">
-            <thead><tr><th>Stock</th><th>Price</th><th>Price %</th><th>OI %</th><th>Setup</th><th>PCR</th><th>ATM IV</th><th>Max Pain</th><th>Score</th></tr></thead>
-            <tbody id="results"><tr><td colspan="9" style="text-align:center;color:#98a6c1;padding:30px">Waiting for scan.</td></tr></tbody>
-          </table>
-        </div>
-        <div class="raw" id="raw"></div>
-      </div>
-
-      <div class="panel section"><h2>📝 API Log</h2><div class="log" id="log">Ready.</div></div>
-    </main>
+  <div class="panel">
+    <h2>📅 Data Selection</h2>
+    <label>Target session</label>
+    <select id="sessionMode" onchange="sessionModeChanged()">
+      <option value="auto">Auto: current if open, otherwise last completed day</option>
+      <option value="date">Specific date</option>
+    </select>
+    <label id="dateLabel" style="display:none">Date</label>
+    <input id="targetDate" type="date" style="display:none">
+    <div class="note" id="dateNote">The app automatically checks NSE status. If closed, it searches backward to the latest day with actual market candles, including holidays/weekends.</div>
   </div>
+
+  <div class="panel">
+    <h2>🔎 Display only</h2>
+    <label>Search stock</label><input id="search" placeholder="RELIANCE, TCS..." oninput="render()">
+    <label>Heatmap sort</label>
+    <select id="sort" onchange="render()">
+      <option value="price">Price %</option>
+      <option value="oi">OI</option>
+      <option value="volume">Volume</option>
+      <option value="symbol">Symbol</option>
+    </select>
+    <div class="note">These are display controls only. No trading filter is being applied in Step 1.</div>
+  </div>
+
+  <div class="panel">
+    <h2>🧪 Diagnostics</h2>
+    <button class="secondary" onclick="toggleRaw()">Show/Hide raw diagnostics</button>
+    <button class="secondary" onclick="clearData()">Clear table</button>
+  </div>
+</aside>
+
+<main>
+<div class="stats">
+  <div class="stat"><b id="stockCount">0</b><span>Stock futures loaded</span></div>
+  <div class="stat"><b id="rows">0</b><span>Data rows received</span></div>
+  <div class="stat"><b id="success">0</b><span>Successful instruments</span></div>
+  <div class="stat"><b id="fail">0</b><span>Failed instruments</span></div>
+  <div class="stat"><b id="dateStat">—</b><span>Session date</span></div>
+</div>
+
+<div class="panel">
+  <h2>🔥 NSE Stock Futures Heatmap — Step 1</h2>
+  <div id="progressText" class="note">Waiting.</div>
+  <div class="progress"><div class="bar" id="bar"></div></div>
+  <div class="toolbar">
+    <input id="quickSearch" placeholder="Quick filter table..." oninput="render()">
+    <select id="quickSort" onchange="document.getElementById('sort').value=this.value;render()">
+      <option value="price">Sort Price %</option><option value="oi">Sort OI</option><option value="volume">Sort Volume</option><option value="symbol">Sort Symbol</option>
+    </select>
+  </div>
+  <div class="tablewrap">
+  <table class="table">
+    <thead><tr>
+      <th>Stock</th><th>Future Contract</th><th>Expiry</th><th>Price</th><th>Price %</th>
+      <th>OI</th><th>OI %*</th><th>Volume</th><th>Session</th><th>Data Source</th>
+    </tr></thead>
+    <tbody id="tbody"><tr><td colspan="10" style="text-align:center;padding:30px;color:#98a6c1">No data yet.</td></tr></tbody>
+  </table></div>
+  <div class="note">* OI % is calculated only when both target-session and previous-session OI are available. We do not invent values. In Step 1, this is raw heatmap data only. If many rows show “fetch failed”, use Show/Hide raw diagnostics; the exact HTTP/CORS/API reason is now recorded there.</div>
+  <div class="raw" id="raw"></div>
+</div>
+
+<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2 style="margin:0">📝 API Log</h2><button class="secondary copyBtn" onclick="copyLog()">📋 Copy Log</button></div><div class="log" id="log">Ready.</div></div>
+</main>
+</div>
 </div>
 
 <script>
-const API='https://api.upstox.com/v2';
-let calls=0, rawLog=[];
+const V2='https://api.upstox.com/v2';
+const V3='https://api.upstox.com/v3';
+const NSE_GZ='https://assets.upstox.com/market-quote/instruments/exchange/NSE.json.gz';
+let DATA=[], raw=[], calls=0;
 
-function log(s){const e=document.getElementById('log');e.textContent+='\\n'+new Date().toLocaleTimeString()+'  '+s;e.scrollTop=e.scrollHeight}
-function status(s,good=false){const e=document.getElementById('status');e.textContent='● '+s;e.style.color=good?'#27c487':'#ff657a'}
-function token(){return document.getElementById('token').value.trim()}
-function headers(){return {'Accept':'application/json','Authorization':'Bearer '+token()}}
-function n(v){return v===null||v===undefined||v===''||isNaN(Number(v))?null:Number(v)}
-function first(o,ks){for(const k of ks)if(o&&o[k]!==undefined&&o[k]!==null)return o[k];return null}
-function items(d){return Array.isArray(d?.data)?d.data:(Array.isArray(d?.data?.data)?d.data.data:[])}
-function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function log(x){let e=document.getElementById('log');e.textContent+='\\n'+new Date().toLocaleTimeString()+'  '+x;e.scrollTop=e.scrollHeight}
+function setStatus(x,ok=false){let e=document.getElementById('status');e.textContent='● '+x;e.className='pill '+(ok?'green':'red')}
+function tok(){return document.getElementById('token').value.trim()}
+function hdr(){return {'Accept':'application/json','Authorization':'Bearer '+tok()}}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]) )}
+function iso(d){return d.toISOString().slice(0,10)}
+function localISO(d){let z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10)}
+function add(d,n){let x=new Date(d);x.setDate(x.getDate()+n);return x}
+function fmt(v,dec=2){return v==null?'—':Number(v).toLocaleString('en-IN',{maximumFractionDigits:dec})}
+function pct(v){return v==null?'—':(v>=0?'+':'')+Number(v).toFixed(2)+'%'}
+function setProgress(done,total,text){document.getElementById('bar').style.width=(total?Math.min(100,done/total*100):0)+'%';document.getElementById('progressText').textContent=text}
 
-async function api(path,label='API'){
-  calls++;document.getElementById('apiCalls').textContent=calls;
-  const r=await fetch(API+path,{headers:headers()});const text=await r.text();
-  let d;try{d=JSON.parse(text)}catch{throw Error(label+' returned non-JSON HTTP '+r.status)}
-  rawLog.push({label,path,status:r.status,response:d});
-  if(!r.ok)throw Error((d.errors?.[0]?.message)||d.message||label+' HTTP '+r.status);
+async function api(base,path,label){
+  calls++;
+  let r;
+  try{
+    r=await fetch(base+path,{headers:hdr()});
+  }catch(e){
+    raw.push({label,path,status:'FETCH_FAILED',response:String(e)});
+    throw Error(label+' — browser/network fetch failed. Check CORS, URL and internet connection.');
+  }
+  let t=await r.text(),d;
+  try{d=JSON.parse(t)}catch{d={raw:t}}
+  raw.push({label,path,status:r.status,response:d});
+  if(!r.ok){
+    const msg=d?.errors?.[0]?.message||d?.message||d?.error||('HTTP '+r.status);
+    throw Error(label+' — '+msg);
+  }
   return d;
 }
 
-function modeChanged(){document.getElementById('dateField').style.display=document.getElementById('modeSelect').value==='historical'?'block':'none'}
-
-async function testConnection(){
-  if(!token())return alert('Paste your Upstox Analytics Token first.');
+function initToken(){
   try{
-    status('Connecting…');const d=await api('/market/status/NSE','Market status');
-    const s=d?.data?.status||'UNKNOWN';
-    document.getElementById('marketBanner').className='banner show';
-    document.getElementById('marketBanner').textContent=(s==='NORMAL'?'🟢 NSE MARKET OPEN':'🟡 NSE MARKET CLOSED — '+s+'. Use Historical mode to test a completed session.');
-    log('Market status: '+s+' | last_updated='+d?.data?.last_updated);status('Connected',true);
-  }catch(e){status('Error');log('ERROR: '+e.message);alert(e.message)}
+    const saved=localStorage.getItem('upstox_heatmap_token');
+    if(saved){document.getElementById('token').value=saved;document.getElementById('saveToken').checked=true;log('Saved token loaded from this browser.')}
+  }catch(e){log('Token storage unavailable in this browser.')}
 }
-
-async function smart(category){
-  return api('/market/smartlist/futures?asset_type=STOCK&category='+encodeURIComponent(category)+'&page_number=1&page_size=50','Smartlist '+category)
-}
-function norm(x,source){
-  return {
-    raw:x,source,
-    key:first(x,['instrument_key','instrument_token']),
-    underlying:first(x,['underlying_key']),
-    sym:first(x,['underlying_symbol','symbol','trading_symbol','name'])||'—',
-    price:n(first(x,['last_price','price','ltp','actual_price'])),
-    pct:n(first(x,['net_change_percent','change_percent','percent_change','price_change_percent'])),
-    oi:n(first(x,['open_interest','oi'])),
-    oiPct:n(first(x,['oi_change_percent','change_in_oi_percent','open_interest_change_percent']))
-  }
-}
-
-/* Historical mode: this intentionally validates that Upstox historical data is reachable.
-   Exact F&O/OI reconstruction requires instrument keys and the appropriate expired/current
-   contract. We do not pretend a simple equity candle is the same as futures OI. */
-async function historicalTest(){
-  const date=document.getElementById('tradeDate').value;
-  if(!date)throw Error('Choose a trading date.');
-  const sample='NSE_INDEX|Nifty 50';
-  const to=date, from=date;
-  const path='/historical-candle/'+encodeURIComponent(sample)+'/1day/'+to+'/'+from;
+function persistToken(){
   try{
-    const d=await api(path,'Historical candle');
-    const candles=items(d);
-    log('Historical candle request succeeded. Rows: '+candles.length);
-    document.getElementById('description').textContent='Historical API connectivity verified for '+date+'. Daily candles are working. Next we will map stock-futures contracts and option-chain snapshots for exact OI/PCR/IV/Max Pain verification.';
-    return {candles};
-  }catch(e){
-    log('Historical test failed: '+e.message);
-    throw e;
-  }
+    if(document.getElementById('saveToken').checked) localStorage.setItem('upstox_heatmap_token',document.getElementById('token').value.trim());
+    else localStorage.removeItem('upstox_heatmap_token');
+  }catch(e){log('Could not save token locally.')}
 }
-
-async function scan(){
-  if(!token())return alert('Paste your Upstox Analytics Token first.');
-  rawLog=[];calls=0;document.getElementById('apiCalls').textContent='0';
-  document.getElementById('results').innerHTML='<tr><td colspan="9" style="text-align:center;padding:30px">Scanning…</td></tr>';
-  status('Scanning…');log('Starting scan.');
-  const mode=document.getElementById('modeSelect').value;
-  document.getElementById('dataMode').textContent=mode==='smart'?'Smartlist':mode==='historical'?'Historical':'Diagnostics';
+document.addEventListener('DOMContentLoaded',initToken);
+document.addEventListener('change',e=>{if(e.target.id==='saveToken')persistToken()});
+document.getElementById('token')?.addEventListener('input',()=>{if(document.getElementById('saveToken')?.checked)persistToken()});
+function toggleSidebar(){document.querySelector('.layout').classList.toggle('sidebar-collapsed')}
+async function copyLog(){
+  const text=document.getElementById('log').textContent;
+  try{await navigator.clipboard.writeText(text);log('API log copied to clipboard.')}
+  catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();log('API log copied to clipboard.')}
+}
+async function checkMarket(){
+  persistToken();
+  if(!tok())return alert('Paste your Upstox Analytics Token first.');
   try{
-    if(mode==='diagnostic'){
-      await testConnection();showRaw();return;
+    const d=await api(V2,'/market/status/NSE','Market status');const s=d?.data?.status||'UNKNOWN';
+    if(s==='NORMAL_OPEN'){
+      document.getElementById('banner').innerHTML='🟢 <b>NSE is OPEN.</b> Step 1 will use current-session futures data.';
+      setStatus('NSE OPEN',true);
+    }else{
+      document.getElementById('banner').innerHTML='🟡 <b>NSE is closed ('+esc(s)+').</b> Step 1 will automatically find the last completed trading session.';
+      setStatus('NSE CLOSED — '+s,true);
     }
-    if(mode==='historical'){
-      const d=await historicalTest();
-      document.getElementById('count').textContent='—';document.getElementById('overlap').textContent='—';
-      document.getElementById('updated').textContent=new Date().toLocaleTimeString();
-      status('Connected',true);showRaw();return;
+    log('Market status='+s);
+  }catch(e){setStatus('Error');log('ERROR: '+e.message);alert(e.message)}
+}
+function sessionModeChanged(){let x=document.getElementById('sessionMode').value==='date';document.getElementById('dateLabel').style.display=x?'block':'none';document.getElementById('targetDate').style.display=x?'block':'none'}
+
+async function loadNSEInstruments(){
+  // Do not download the public .json.gz instrument file from the browser:
+  // that asset can fail because of browser CORS/network restrictions.
+  // Instead use Upstox's authenticated Instrument Search API.
+  log('Using Upstox Instrument Search API (no .json.gz download)…');
+  const found=new Map();
+  const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  let done=0;
+  for(const q of letters){
+    let page=1,totalPages=1;
+    do{
+      const u='/instruments/search?query='+encodeURIComponent(q)+'&exchanges=NSE&segments=FO&instrument_types=FUT&page_number='+page+'&records=30';
+      try{
+        const d=await api(V2,u,'Instrument search '+q+' page '+page);
+        for(const x of (d?.data||[])){
+          if(x.segment==='NSE_FO' && x.instrument_type==='FUT' && x.underlying_type==='EQUITY' && x.instrument_key && x.underlying_symbol){
+            found.set(x.instrument_key,x);
+          }
+        }
+        totalPages=Number(d?.meta_data?.page?.total_pages||1);
+        page++;
+      }catch(e){
+        // A one-character query can be rejected/limited by some API versions.
+        // Keep scanning the remaining letters rather than aborting the whole step.
+        log('Instrument query '+q+' failed: '+e.message);
+        break;
+      }
+    }while(page<=totalPages);
+    done++;setProgress(done,letters.length,'Building stock-futures universe: '+done+'/'+letters.length+' letter queries');
+  }
+  const arr=[...found.values()];
+  if(!arr.length) throw Error('Instrument Search returned no NSE stock futures. Check that your token has access to Instrument Search.');
+  log('Instrument Search complete. Unique NSE stock-futures contracts='+arr.length);
+  return arr;
+}
+function expiryMs(x){
+  const v=x?.expiry;
+  if(v===null||v===undefined||v==='') return null;
+  if(typeof v==='number') return v < 100000000000 ? v*1000 : v;
+  const s=String(v).trim();
+  if(/^\d+$/.test(s)){const n=Number(s);return n<100000000000?n*1000:n}
+  const t=Date.parse(s);
+  return isNaN(t)?null:t;
+}
+function chooseFutures(arr,target){
+  const targetMs=new Date(target+'T23:59:59+05:30').getTime();
+  const fut=arr.filter(x=>{
+    const seg=String(x.segment||'').toUpperCase();
+    const typ=String(x.instrument_type||'').toUpperCase();
+    const under=String(x.underlying_symbol||'').trim();
+    return seg==='NSE_FO' && typ==='FUT' && !!x.instrument_key && !!under;
+  });
+  log('Instrument Search FUT records before expiry selection='+fut.length);
+  const groups=new Map();
+  for(const x of fut){
+    const exp=expiryMs(x);
+    const k=String(x.underlying_symbol).toUpperCase();
+    // Keep the nearest contract that is valid on the target date.
+    // If expiry is unavailable, retain it rather than silently dropping the stock.
+    if(exp!==null && exp<targetMs) continue;
+    if(!groups.has(k)){
+      groups.set(k,x);
+    }else{
+      const old=groups.get(k), oldExp=expiryMs(old);
+      if(exp!==null && (oldExp===null || exp<oldExp)) groups.set(k,x);
     }
+  }
+  const out=[...groups.values()].sort((a,b)=>String(a.underlying_symbol).localeCompare(String(b.underlying_symbol)));
+  log('Unique stock-futures after target-date selection='+out.length);
+  if(out.length===0 && fut.length){
+    log('WARNING: expiry filtering removed every contract. Falling back to one contract per underlying.');
+    const fallback=new Map();
+    for(const x of fut){
+      const k=String(x.underlying_symbol).toUpperCase();
+      const exp=expiryMs(x), old=fallback.get(k);
+      if(!old || (exp!==null && (expiryMs(old)===null || exp<expiryMs(old)))) fallback.set(k,x);
+    }
+    return [...fallback.values()].sort((a,b)=>String(a.underlying_symbol).localeCompare(String(b.underlying_symbol)));
+  }
+  return out;
+}
 
-    const [pg,og]=await Promise.all([smart('PRICE_GAINERS'),smart('OI_GAINERS')]);
-    const prices=items(pg).map(x=>norm(x,'price')), ois=items(og).map(x=>norm(x,'oi'));
-    const om=new Map(ois.map(x=>[x.key||x.sym,x]));
-    let c=prices.map(p=>({...p,oiRow:om.get(p.key||p.sym)}));
-    const initial=c.length;
-    if(document.getElementById('requireBoth').checked)c=c.filter(x=>x.oiRow);
-    c=c.filter(x=>x.pct==null||x.pct>=Number(document.getElementById('minPrice').value));
-    c=c.slice(0,Math.max(10,Number(document.getElementById('topN').value)*3));
-    document.getElementById('overlap').textContent=c.length;
-    log('Price gainers='+prices.length+', OI gainers='+ois.length+', overlap after filters='+c.length);
+async function historical(key,to,from){
+  // Upstox V2 daily endpoint. This matches the endpoint that already
+  // successfully returned the user's Nifty 50 historical candle.
+  const p='/historical-candle/'+encodeURIComponent(key)+'/day/'+to+'/'+from;
+  return api(V2,p,'Historical '+key);
+}
+async function findLastSession(){
+  for(let i=1;i<=15;i++){
+    let d=add(new Date(),-i), date=localISO(d);
+    // NIFTY is used only to discover whether the date has a daily candle.
+    try{
+      const r=await historical('NSE_INDEX|Nifty 50',date,date);
+      if((r?.data?.candles||[]).length){log('Latest completed market session='+date);return date}
+    }catch(e){log('Skip '+date+' — '+e.message)}
+  }
+  throw Error('Could not find a completed market session in the last 15 days.');
+}
+async function getTarget(){
+  if(document.getElementById('sessionMode').value==='date'){
+    let d=document.getElementById('targetDate').value;if(!d)throw Error('Choose a date.');
+    return d;
+  }
+  const ms=await api(V2,'/market/status/NSE','Market status');
+  if(ms?.data?.status==='NORMAL_OPEN')return localISO(new Date());
+  return await findLastSession();
+}
+function previousCalendar(date){return localISO(add(new Date(date+'T12:00:00'),-1))}
 
-    /* V2 deliberately does not fabricate PCR/IV/Max Pain from missing snapshots.
-       We'll add exact contract-specific option-chain enrichment once instrument mapping is confirmed. */
-    const rows=c.slice(0,Number(document.getElementById('topN').value)).map(x=>{
-      let score=0;if(x.pct!=null&&x.pct>0)score+=2;if(x.oiRow)score+=3;
-      return {...x,score,pcr:null,iv:null,maxPain:null}
-    });
-    render(rows);
-    document.getElementById('count').textContent=rows.length;
-    document.getElementById('updated').textContent=new Date().toLocaleTimeString();
-    document.getElementById('description').textContent='Smartlist scan completed. Option-chain enrichment is intentionally disabled until we confirm the exact Upstox instrument-key mapping.';
-    status('Connected',true);log('Scan complete: '+rows.length+' candidates from '+initial+' price-gainer records.');
+async function loadHeatmap(){
+  persistToken();
+  if(!tok())return alert('Paste your Upstox Analytics Token first.');
+  DATA=[];raw=[];calls=0;render();setProgress(0,1,'Starting…');
+  setStatus('Loading…');document.getElementById('success').textContent='0';document.getElementById('fail').textContent='0';
+  try{
+    const target=await getTarget();document.getElementById('dateStat').textContent=target;log('Target session='+target);
+    const instruments=await loadNSEInstruments();
+    const futs=chooseFutures(instruments,target);
+    document.getElementById('stockCount').textContent=futs.length;
+    if(!futs.length)throw Error('Instrument Search returned FUT records, but none could be selected for '+target+'. Check the raw diagnostics.');
+    log('Selected one nearest non-expired stock future per underlying: '+futs.length);
+
+    const marketOpen=(await api(V2,'/market/status/NSE','Market status'))?.data?.status==='NORMAL_OPEN';
+    const previous=previousCalendar(target);
+    // Shared counters for both live and historical branches.
+    let ok=0, fail=0;
+
+    // Current open: full quote gives live LTP, net change, OI and volume.
+    // Closed/historical: V2 daily candles give target and previous-session OHLC/OI.
+    if(marketOpen && target===localISO(new Date())){
+      const batch=450;let done=0;
+      for(let i=0;i<futs.length;i+=batch){
+        const part=futs.slice(i,i+batch);
+        const keys=part.map(x=>x.instrument_key).join(',');
+        try{
+          const q=await api(V2,'/market-quote/quotes?instrument_key='+encodeURIComponent(keys),'Full quotes');
+          const map=q?.data||{};
+          for(const f of part){
+            const key=f.instrument_key, v=map[key]||map[key.replace('|',':')]||Object.values(map).find(z=>z.instrument_token===key);
+            if(!v){fail++;log(f.underlying_symbol+': no quote returned');continue}
+            const lp=Number(v.last_price), nc=Number(v.net_change), prevClose=lp-nc;
+            DATA.push({symbol:f.underlying_symbol,contract:f.trading_symbol,expiry:(expiryMs(f)?new Date(expiryMs(f)).toLocaleDateString('en-IN'):'—'),price:lp,pricePct:prevClose?nc/prevClose*100:null,oi:Number(v.oi)||null,oiPct:null,volume:Number(v.volume)||null,session:target,source:'Live full quote',key});
+            ok++;
+          }
+        }catch(e){fail+=part.length;log('Quote batch failed: '+e.message)}
+        done+=part.length;setProgress(done,futs.length,'Live quotes '+done+'/'+futs.length);
+        document.getElementById('success').textContent=ok;document.getElementById('fail').textContent=fail;render();
+      }
+    }else{
+      let done=0;
+      const concurrency=6;
+      for(let i=0;i<futs.length;i+=concurrency){
+        const part=futs.slice(i,i+concurrency);
+        const results=await Promise.all(part.map(async f=>{
+          try{
+            const r=await historical(f.instrument_key,target,previous);
+            const cs=r?.data?.candles||[];
+            const exact=cs.find(c=>String(c[0]).slice(0,10)===target)||cs[cs.length-1];
+            const prev=cs.filter(c=>String(c[0]).slice(0,10)!==target).slice(-1)[0];
+            if(!exact)return null;
+            const price=Number(exact[4]), prevClose=prev?Number(prev[4]):null, oi=Number(exact[6]), prevOI=prev?Number(prev[6]):null;
+            return {symbol:f.underlying_symbol,contract:f.trading_symbol,expiry:(expiryMs(f)?new Date(expiryMs(f)).toLocaleDateString('en-IN'):'—'),price,pricePct:prevClose?((price-prevClose)/prevClose*100):null,oi:oi||null,oiPct:(prevOI&&oi)?((oi-prevOI)/prevOI*100):null,volume:Number(exact[5])||null,session:target,source:'Historical futures candle',key:f.instrument_key,prevClose,prevOI};
+          }catch(e){return {error:e.message,symbol:f.underlying_symbol}}
+        }));
+        for(const r of results){done++;if(r?.error){fail++;log(r.symbol+': '+r.error)}else if(r){ok++;DATA.push(r)}else fail++}
+        document.getElementById('success').textContent=ok;document.getElementById('fail').textContent=fail;setProgress(done,futs.length,'Historical futures '+done+'/'+futs.length);render();
+      }
+    }
+    DATA.sort((a,b)=>(b.pricePct??-999)-(a.pricePct??-999));render();
+    document.getElementById('rows').textContent=DATA.length;
+    document.getElementById('banner').innerHTML='✅ <b>STEP 1 COMPLETE:</b> Loaded '+DATA.length+' stock-futures records for <b>'+esc(target)+'</b>. No CE filters applied.';
+    setStatus('Heatmap loaded',true);log('STEP 1 COMPLETE. Records='+DATA.length+', successful='+ok+', failed='+fail);
     showRaw();
   }catch(e){
-    status('Error');log('SCAN ERROR: '+e.message);
-    document.getElementById('results').innerHTML='<tr><td colspan="9" style="text-align:center;color:#ff657a;padding:30px">'+esc(e.message)+'</td></tr>';
-    showRaw();
+    setStatus('Error');log('ERROR: '+e.message);document.getElementById('banner').innerHTML='❌ '+esc(e.message);showRaw();alert(e.message)
   }
 }
-
-function render(rows){
-  if(!rows.length){document.getElementById('results').innerHTML='<tr><td colspan="9" style="text-align:center;color:#e7b84b;padding:30px">No candidates returned for this mode/date. Try Historical mode or lower filters.</td></tr>';return}
-  document.getElementById('results').innerHTML=rows.map(x=>{
-    const pct=x.pct==null?'—':(x.pct>=0?'+':'')+x.pct.toFixed(2)+'%';
-    const oiPct=x.oiRow?.oiPct!=null?x.oiRow.oiPct.toFixed(2)+'%':'—';
-    return `<tr><td><b>${esc(x.sym)}</b></td><td>${x.price==null?'—':x.price.toFixed(2)}</td><td class="good">${pct}</td><td>${oiPct}</td><td><span class="badge">LONG BUILDUP WATCH</span></td><td>${x.pcr==null?'—':x.pcr.toFixed(2)}</td><td>${x.iv==null?'—':x.iv.toFixed(1)}</td><td>${x.maxPain==null?'—':x.maxPain.toFixed(2)}</td><td><b>${x.score}/5</b></td></tr>`
-  }).join('')
+function render(){
+  const q=(document.getElementById('search').value+' '+document.getElementById('quickSearch').value).trim().toUpperCase();
+  const sort=document.getElementById('sort').value;
+  let rows=DATA.filter(x=>!q||x.symbol.toUpperCase().includes(q)||x.contract.toUpperCase().includes(q));
+  rows.sort((a,b)=>{
+    if(sort==='symbol')return a.symbol.localeCompare(b.symbol);
+    return (b[sort==='price'?'pricePct':sort==='oi'?'oi':'volume']??-Infinity)-(a[sort==='price'?'pricePct':sort==='oi'?'oi':'volume']??-Infinity)
+  });
+  document.getElementById('rows').textContent=rows.length;
+  document.getElementById('tbody').innerHTML=rows.length?rows.map(x=>`<tr>
+<td><b>${esc(x.symbol)}</b></td><td>${esc(x.contract)}</td><td>${esc(x.expiry)}</td><td>${fmt(x.price)}</td>
+<td class="${x.pricePct>0?'up':x.pricePct<0?'down':'neutral'}">${pct(x.pricePct)}</td>
+<td>${fmt(x.oi,0)}</td><td class="${x.oiPct>0?'up':x.oiPct<0?'down':'neutral'}">${pct(x.oiPct)}</td>
+<td>${fmt(x.volume,0)}</td><td>${esc(x.session)}</td><td><span class="tag">${esc(x.source)}</span></td></tr>`).join(''):'<tr><td colspan="10" style="text-align:center;padding:30px;color:#98a6c1">No matching rows.</td></tr>';
 }
-function saveFilters(){log('Filter values saved for this tab.')}
-function toggleRaw(){const e=document.getElementById('raw');e.style.display=e.style.display==='block'?'none':'block';showRaw()}
-function showRaw(){document.getElementById('raw').textContent=JSON.stringify(rawLog,null,2)}
+function toggleRaw(){let e=document.getElementById('raw');e.style.display=e.style.display==='block'?'none':'block';showRaw()}
+function showRaw(){document.getElementById('raw').textContent=JSON.stringify(raw.slice(-15),null,2)}
+function clearData(){DATA=[];render();document.getElementById('stockCount').textContent='0';document.getElementById('success').textContent='0';document.getElementById('fail').textContent='0';document.getElementById('dateStat').textContent='—';log('Table cleared.')}
 </script>
 </body>
 </html>
