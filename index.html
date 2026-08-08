@@ -145,7 +145,7 @@ async function testConnection(){
 }
 
 async function smart(category){
-  return api('/market/smartlist/futures?asset_type=STOCK&category='+encodeURIComponent(category)+'&page_number=1&page_size=100','Smartlist '+category)
+  return api('/market/smartlist/futures?asset_type=STOCK&category='+encodeURIComponent(category)+'&page_number=1&page_size=50','Smartlist '+category)
 }
 function norm(x,source){
   return {
@@ -173,7 +173,7 @@ async function historicalTest(){
     const d=await api(path,'Historical candle');
     const candles=items(d);
     log('Historical candle request succeeded. Rows: '+candles.length);
-    document.getElementById('description').textContent='Historical API connectivity verified for '+date+'. Exact stock-futures OI/option-chain snapshot requires contract-specific instrument keys.';
+    document.getElementById('description').textContent='Historical API connectivity verified for '+date+'. Daily candles are working. Next we will map stock-futures contracts and option-chain snapshots for exact OI/PCR/IV/Max Pain verification.';
     return {candles};
   }catch(e){
     log('Historical test failed: '+e.message);
