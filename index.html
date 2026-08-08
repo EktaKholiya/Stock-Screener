@@ -32,8 +32,8 @@ label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}input,sel
     <h2>🔐 Upstox</h2>
     <label>Analytics Token</label>
     <input id="token" type="password" placeholder="Paste token here">
-    <button onclick="checkMarket()">Check Market + Date</button>
-    <button onclick="loadHeatmap()">🔥 Load ALL Stock Futures</button>
+    <button id="checkMarketBtn" onclick="checkMarket()">Check Market + Date</button>
+    <button id="loadHeatmapBtn" onclick="loadHeatmap()">🔥 Load ALL Stock Futures</button>
     <div class="note">Your token is used only in this browser tab. Do not send it to me or anyone else.</div>
   </div>
 
@@ -66,6 +66,7 @@ label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}input,sel
     <h2>🧪 Diagnostics</h2>
     <button class="secondary" onclick="toggleRaw()">Show/Hide raw diagnostics</button>
     <button class="secondary" onclick="clearData()">Clear table</button>
+    <button class="secondary" id="clearCachesBtn" onclick="clearApiCaches()">Clear API caches</button>
   </div>
 </aside>
 
@@ -109,9 +110,44 @@ label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}input,sel
 const V2='https://api.upstox.com/v2';
 const V3='https://api.upstox.com/v3';
 const NSE_GZ='https://assets.upstox.com/market-quote/instruments/exchange/NSE.json.gz';
-let DATA=[], raw=[], calls=0;
+let DATA=[], raw=[], calls=0, isLoading=false;
+let instrumentCache=null;
+let historicalCache={};
+let marketStatusCache=null;
+let marketStatusPromise=null;
+let lastApiRequestAt=0;
 
-function log(x){let e=document.getElementById('log');e.textContent+='\\n'+new Date().toLocaleTimeString()+'  '+x;e.scrollTop=e.scrollHeight}
+function log(x){
+  const e=document.getElementById('log');
+  const stamp=new Date().toLocaleTimeString();
+  e.textContent+=(e.textContent? '\n':'')+stamp+'  '+x+' [API calls: '+calls+']';
+  e.scrollTop=e.scrollHeight;
+}
+function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+function safeNumber(v){const n=Number(v);return Number.isFinite(n)?n:null}
+function safeText(v){return String(v??'').trim()||'—'}
+function setBusy(isBusy){const checkBtn=document.getElementById('checkMarketBtn');const loadBtn=document.getElementById('loadHeatmapBtn');const clearBtn=document.getElementById('clearCachesBtn');if(checkBtn)checkBtn.disabled=isBusy;if(loadBtn)loadBtn.disabled=isBusy;if(clearBtn)clearBtn.disabled=isBusy}
+function normalizeQuoteMap(payload){if(!payload||typeof payload!=='object')return {};if(Array.isArray(payload))return Object.fromEntries(payload.map(item=>[item.instrument_key||item.instrument_token,item]));return payload}
+function getStorageKey(name){return 'ce-heatmap-'+name}
+function loadCaches(){
+  try{
+    const storedInstruments=localStorage.getItem(getStorageKey('instruments'));
+    if(storedInstruments){const obj=JSON.parse(storedInstruments);if(obj?.ts && Date.now()-obj.ts < 24*60*60*1000){instrumentCache=obj.data;}}
+    const storedHistorical=localStorage.getItem(getStorageKey('historical'));
+    if(storedHistorical){const obj=JSON.parse(storedHistorical);if(obj && typeof obj==='object') historicalCache=obj;}
+  }catch(e){log('Cache load failed: '+e.message)}
+}
+function saveCaches(){
+  try{
+    if(instrumentCache){localStorage.setItem(getStorageKey('instruments'),JSON.stringify({ts:Date.now(),data:instrumentCache}));}
+    if(historicalCache){localStorage.setItem(getStorageKey('historical'),JSON.stringify(historicalCache));}
+  }catch(e){log('Cache save failed: '+e.message)}
+}
+function clearApiCaches(){
+  instrumentCache=null;historicalCache={};marketStatusCache=null;marketStatusPromise=null;try{localStorage.removeItem(getStorageKey('instruments'));localStorage.removeItem(getStorageKey('historical'));}catch(e){}
+  log('API caches cleared.');document.getElementById('banner').innerHTML='🧹 <b>API caches cleared.</b> Next load will fetch fresh data.';
+}
+async function throttleRequest(){const now=Date.now();const waitMs=Math.max(0,lastApiRequestAt+140-now);if(waitMs) await wait(waitMs);lastApiRequestAt=Date.now();}
 function setStatus(x,ok=false){let e=document.getElementById('status');e.textContent='● '+x;e.className='pill '+(ok?'green':'red')}
 function tok(){return document.getElementById('token').value.trim()}
 function hdr(){return {'Accept':'application/json','Authorization':'Bearer '+tok()}}
@@ -124,16 +160,39 @@ function pct(v){return v==null?'—':(v>=0?'+':'')+Number(v).toFixed(2)+'%'}
 function setProgress(done,total,text){document.getElementById('bar').style.width=(total?Math.min(100,done/total*100):0)+'%';document.getElementById('progressText').textContent=text}
 
 async function api(base,path,label){
-  calls++;let r=await fetch(base+path,{headers:hdr()});let t=await r.text();let d;try{d=JSON.parse(t)}catch{throw Error(label+' returned non-JSON HTTP '+r.status)}
-  raw.push({label,path,status:r.status,response:d});
-  if(!r.ok)throw Error((d.errors?.[0]?.message)||d.message||label+' HTTP '+r.status);
-  return d;
+  const shouldRetry=(status,err)=>[408,429,500,502,503,504].includes(status)||err?.name==='AbortError'||/timeout|network|fetch/i.test(String(err?.message||''));
+  let lastError;
+  for(let attempt=0;attempt<=4;attempt++){
+    try{
+      await throttleRequest();
+      calls++;
+      const controller=new AbortController();
+      const timeoutId=setTimeout(()=>controller.abort(),20000);
+      let r;
+      try{r=await fetch(base+path,{headers:hdr(),signal:controller.signal})}catch(err){clearTimeout(timeoutId);throw err;}
+      clearTimeout(timeoutId);
+      let t=await r.text();let d;try{d=JSON.parse(t)}catch{throw Error(label+' returned non-JSON HTTP '+r.status)}
+      raw.push({label,path,status:r.status,response:d});
+      if(r.ok)return d;
+      const retryable=shouldRetry(r.status,null);
+      if(retryable && attempt<4){const delay=700*(attempt+1);log(label+' retry '+(attempt+1)+'/4 after HTTP '+r.status);await wait(delay);continue;}
+      throw Error((d.errors?.[0]?.message)||d.message||label+' HTTP '+r.status);
+    }catch(err){
+      lastError=err;
+      const retryable=shouldRetry(null,err);
+      if(retryable && attempt<4){const delay=700*(attempt+1);log(label+' retry '+(attempt+1)+'/4 after '+err.message);await wait(delay);continue;}
+      raw.push({label,path,status:null,response:{error:err.message}});
+      throw err;
+    }
+  }
+  throw lastError||new Error(label+' failed');
 }
 
 async function checkMarket(){
   if(!tok())return alert('Paste your Upstox Analytics Token first.');
+  setBusy(true);
   try{
-    const d=await api(V2,'/market/status/NSE','Market status');const s=d?.data?.status||'UNKNOWN';
+    const s=await getMarketStatus();
     if(s==='NORMAL_OPEN'){
       document.getElementById('banner').innerHTML='🟢 <b>NSE is OPEN.</b> Step 1 will use current-session futures data.';
       setStatus('NSE OPEN',true);
@@ -143,13 +202,19 @@ async function checkMarket(){
     }
     log('Market status='+s);
   }catch(e){setStatus('Error');log('ERROR: '+e.message);alert(e.message)}
+  finally{setBusy(false)}
 }
 function sessionModeChanged(){let x=document.getElementById('sessionMode').value==='date';document.getElementById('dateLabel').style.display=x?'block':'none';document.getElementById('targetDate').style.display=x?'block':'none'}
 
-async function loadNSEInstruments(){
-  // Do not download the public .json.gz instrument file from the browser:
-  // that asset can fail because of browser CORS/network restrictions.
-  // Instead use Upstox's authenticated Instrument Search API.
+async function getMarketStatus(force=false){
+  if(!force && marketStatusCache){return marketStatusCache;}
+  if(!force && marketStatusPromise){return marketStatusPromise;}
+  marketStatusPromise=api(V2,'/market/status/NSE','Market status').then(d=>{marketStatusCache=d?.data?.status||'UNKNOWN';return marketStatusCache;}).finally(()=>{marketStatusPromise=null;});
+  return marketStatusPromise;
+}
+
+async function loadNSEInstruments(force=false){
+  if(!force && instrumentCache){log('Using cached NSE F&O instruments.');return instrumentCache;}
   log('Using Upstox Instrument Search API (no .json.gz download)…');
   const found=new Map();
   const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -168,8 +233,6 @@ async function loadNSEInstruments(){
         totalPages=Number(d?.meta_data?.page?.total_pages||1);
         page++;
       }catch(e){
-        // A one-character query can be rejected/limited by some API versions.
-        // Keep scanning the remaining letters rather than aborting the whole step.
         log('Instrument query '+q+' failed: '+e.message);
         break;
       }
@@ -178,6 +241,7 @@ async function loadNSEInstruments(){
   }
   const arr=[...found.values()];
   if(!arr.length) throw Error('Instrument Search returned no NSE stock futures. Check that your token has access to Instrument Search.');
+  instrumentCache=arr;saveCaches();
   log('Instrument Search complete. Unique NSE stock-futures contracts='+arr.length);
   return arr;
 }
@@ -228,19 +292,34 @@ function chooseFutures(arr,target){
   return out;
 }
 
-async function historical(key,to,from){
+async function historical(key,to,from,force=false){
+  const cacheKey=key+'|'+to+'|'+from+'|1';
+  const cached=!force && historicalCache[cacheKey];
+  if(cached && Date.now()-cached.ts<24*60*60*1000){return cached.data;}
   const p='/historical-candle/'+encodeURIComponent(key)+'/days/1/'+to+'/'+from;
-  return api(V3,p,'Historical '+key);
+  const data=await api(V3,p,'Historical '+key);
+  historicalCache[cacheKey]={ts:Date.now(),data};saveCaches();
+  return data;
+}
+async function historicalRange(key,to,from,days=15,force=false){
+  const cacheKey=key+'|'+to+'|'+from+'|'+days;
+  const cached=!force && historicalCache[cacheKey];
+  if(cached && Date.now()-cached.ts<24*60*60*1000){return cached.data;}
+  const p='/historical-candle/'+encodeURIComponent(key)+'/days/'+days+'/'+to+'/'+from;
+  const data=await api(V3,p,'Historical range '+key);
+  historicalCache[cacheKey]={ts:Date.now(),data};saveCaches();
+  return data;
 }
 async function findLastSession(){
-  for(let i=1;i<=15;i++){
-    let d=add(new Date(),-i), date=localISO(d);
-    // NIFTY is used only to discover whether the date has a daily candle.
-    try{
-      const r=await historical('NSE_INDEX|Nifty 50',date,date);
-      if((r?.data?.candles||[]).length){log('Latest completed market session='+date);return date}
-    }catch(e){log('Skip '+date+' — '+e.message)}
-  }
+  const today=localISO(new Date());
+  const from=localISO(add(new Date(),-15));
+  try{
+    const r=await historicalRange('NSE_INDEX|Nifty 50',today,from,15);
+    const candles=r?.data?.candles||[];
+    const dates=[...new Set(candles.map(c=>String(c[0]).slice(0,10)).filter(Boolean))].sort();
+    const last=dates[dates.length-1];
+    if(last){log('Latest completed market session='+last);return last;}
+  }catch(e){log('Last-session lookup failed: '+e.message)}
   throw Error('Could not find a completed market session in the last 15 days.');
 }
 async function getTarget(){
@@ -248,15 +327,17 @@ async function getTarget(){
     let d=document.getElementById('targetDate').value;if(!d)throw Error('Choose a date.');
     return d;
   }
-  const ms=await api(V2,'/market/status/NSE','Market status');
-  if(ms?.data?.status==='NORMAL_OPEN')return localISO(new Date());
+  const status=await getMarketStatus();
+  if(status==='NORMAL_OPEN')return localISO(new Date());
   return await findLastSession();
 }
 function previousCalendar(date){return localISO(add(new Date(date+'T12:00:00'),-1))}
 
 async function loadHeatmap(){
   if(!tok())return alert('Paste your Upstox Analytics Token first.');
-  DATA=[];raw=[];calls=0;render();setProgress(0,1,'Starting…');
+  if(isLoading){log('Scan already in progress. Please wait.');return;}
+  isLoading=true;setBusy(true);
+  DATA=[];render();setProgress(0,1,'Starting…');
   setStatus('Loading…');document.getElementById('success').textContent='0';document.getElementById('fail').textContent='0';
   try{
     const target=await getTarget();document.getElementById('dateStat').textContent=target;log('Target session='+target);
@@ -266,11 +347,10 @@ async function loadHeatmap(){
     if(!futs.length)throw Error('Instrument Search returned FUT records, but none could be selected for '+target+'. Check the raw diagnostics.');
     log('Selected one nearest non-expired stock future per underlying: '+futs.length);
 
-    const marketOpen=(await api(V2,'/market/status/NSE','Market status'))?.data?.status==='NORMAL_OPEN';
+    const marketStatus=await getMarketStatus();
+    const marketOpen=marketStatus==='NORMAL_OPEN';
     const previous=previousCalendar(target);
 
-    // Current open: full quote gives live LTP, net change, OI and volume.
-    // Closed/historical: V3 daily candles give target and previous-session OHLC/OI.
     if(marketOpen && target===localISO(new Date())){
       const batch=450;let done=0,ok=0,fail=0;
       for(let i=0;i<futs.length;i+=batch){
@@ -278,12 +358,14 @@ async function loadHeatmap(){
         const keys=part.map(x=>x.instrument_key).join(',');
         try{
           const q=await api(V2,'/market-quote/quotes?instrument_key='+encodeURIComponent(keys),'Full quotes');
-          const map=q?.data||{};
+          const map=normalizeQuoteMap(q?.data);
           for(const f of part){
-            const key=f.instrument_key, v=map[key]||map[key.replace('|',':')]||Object.values(map).find(z=>z.instrument_token===key);
+            const key=f.instrument_key;
+            const v=map[key]||map[key.replace('|',':')]||Object.values(map).find(z=>z?.instrument_token===key);
             if(!v){fail++;continue}
-            const lp=Number(v.last_price), nc=Number(v.net_change), prevClose=lp-nc;
-            DATA.push({symbol:f.underlying_symbol,contract:f.trading_symbol,expiry:(expiryMs(f)?new Date(expiryMs(f)).toLocaleDateString('en-IN'):'—'),price:lp,pricePct:prevClose?nc/prevClose*100:null,oi:Number(v.oi)||null,oiPct:null,volume:Number(v.volume)||null,session:target,source:'Live full quote',key});
+            const lp=safeNumber(v.last_price), nc=safeNumber(v.net_change), oi=safeNumber(v.oi), volume=safeNumber(v.volume);
+            const prevClose=lp!=null&&nc!=null?lp-nc:null;
+            DATA.push({symbol:f.underlying_symbol,contract:f.trading_symbol,expiry:(expiryMs(f)?new Date(expiryMs(f)).toLocaleDateString('en-IN'):'—'),price:lp,pricePct:prevClose?nc/prevClose*100:null,oi:oi,oiPct:null,volume:volume,session:target,source:'Live full quote',key});
             ok++;
           }
         }catch(e){fail+=part.length;log('Quote batch failed: '+e.message)}
@@ -292,18 +374,17 @@ async function loadHeatmap(){
       }
     }else{
       let done=0,ok=0,fail=0;
-      const concurrency=6;
-      for(let i=0;i<futs.length;i+=concurrency){
-        const part=futs.slice(i,i+concurrency);
+      for(let i=0;i<futs.length;i+=3){
+        const part=futs.slice(i,i+3);
         const results=await Promise.all(part.map(async f=>{
           try{
             const r=await historical(f.instrument_key,target,previous);
             const cs=r?.data?.candles||[];
             const exact=cs.find(c=>String(c[0]).slice(0,10)===target)||cs[cs.length-1];
-            const prev=cs.filter(c=>String(c[0]).slice(0,10)!==target).slice(-1)[0];
+            const prevCandle=cs.filter(c=>String(c[0]).slice(0,10)!==target).slice(-1)[0];
             if(!exact)return null;
-            const price=Number(exact[4]), prevClose=prev?Number(prev[4]):null, oi=Number(exact[6]), prevOI=prev?Number(prev[6]):null;
-            return {symbol:f.underlying_symbol,contract:f.trading_symbol,expiry:(expiryMs(f)?new Date(expiryMs(f)).toLocaleDateString('en-IN'):'—'),price,pricePct:prevClose?((price-prevClose)/prevClose*100):null,oi:oi||null,oiPct:(prevOI&&oi)?((oi-prevOI)/prevOI*100):null,volume:Number(exact[5])||null,session:target,source:'Historical futures candle',key:f.instrument_key,prevClose,prevOI};
+            const price=safeNumber(exact[4]), prevClose=prevCandle?safeNumber(prevCandle[4]):null, oi=safeNumber(exact[6]), prevOI=prevCandle?safeNumber(prevCandle[6]):null;
+            return {symbol:f.underlying_symbol,contract:f.trading_symbol,expiry:(expiryMs(f)?new Date(expiryMs(f)).toLocaleDateString('en-IN'):'—'),price,pricePct:(price!=null&&prevClose!=null&&prevClose!==0)?((price-prevClose)/prevClose*100):null,oi:oi,oiPct:(oi!=null&&prevOI!=null&&prevOI!==0)?((oi-prevOI)/prevOI*100):null,volume:safeNumber(exact[5]),session:target,source:'Historical futures candle',key:f.instrument_key,prevClose,prevOI};
           }catch(e){return {error:e.message,symbol:f.underlying_symbol}}
         }));
         for(const r of results){done++;if(r?.error){fail++;log(r.symbol+': '+r.error)}else if(r){ok++;DATA.push(r)}else fail++}
@@ -317,26 +398,34 @@ async function loadHeatmap(){
     showRaw();
   }catch(e){
     setStatus('Error');log('ERROR: '+e.message);document.getElementById('banner').innerHTML='❌ '+esc(e.message);showRaw();alert(e.message)
-  }
+  }finally{isLoading=false;setBusy(false)}
 }
 function render(){
   const q=(document.getElementById('search').value+' '+document.getElementById('quickSearch').value).trim().toUpperCase();
   const sort=document.getElementById('sort').value;
-  let rows=DATA.filter(x=>!q||x.symbol.toUpperCase().includes(q)||x.contract.toUpperCase().includes(q));
+  let rows=DATA.filter(x=>!q||safeText(x.symbol).toUpperCase().includes(q)||safeText(x.contract).toUpperCase().includes(q));
   rows.sort((a,b)=>{
-    if(sort==='symbol')return a.symbol.localeCompare(b.symbol);
-    return (b[sort==='price'?'pricePct':sort==='oi'?'oi':'volume']??-Infinity)-(a[sort==='price'?'pricePct':sort==='oi'?'oi':'volume']??-Infinity)
+    if(sort==='symbol')return safeText(a.symbol).localeCompare(safeText(b.symbol));
+    const key=sort==='price'?'pricePct':sort==='oi'?'oi':'volume';
+    const av=safeNumber(a[key]);const bv=safeNumber(b[key]);
+    if(av==null&&bv==null)return safeText(a.symbol).localeCompare(safeText(b.symbol));
+    if(av==null)return 1;if(bv==null)return -1;return bv-av;
   });
   document.getElementById('rows').textContent=rows.length;
-  document.getElementById('tbody').innerHTML=rows.length?rows.map(x=>`<tr>
-<td><b>${esc(x.symbol)}</b></td><td>${esc(x.contract)}</td><td>${esc(x.expiry)}</td><td>${fmt(x.price)}</td>
-<td class="${x.pricePct>0?'up':x.pricePct<0?'down':'neutral'}">${pct(x.pricePct)}</td>
-<td>${fmt(x.oi,0)}</td><td class="${x.oiPct>0?'up':x.oiPct<0?'down':'neutral'}">${pct(x.oiPct)}</td>
-<td>${fmt(x.volume,0)}</td><td>${esc(x.session)}</td><td><span class="tag">${esc(x.source)}</span></td></tr>`).join(''):'<tr><td colspan="10" style="text-align:center;padding:30px;color:#98a6c1">No matching rows.</td></tr>';
+  document.getElementById('tbody').innerHTML=rows.length?rows.map(x=>{
+    const pricePct=safeNumber(x.pricePct);const oiPct=safeNumber(x.oiPct);
+    return `<tr>
+<td><b>${esc(safeText(x.symbol))}</b></td><td>${esc(safeText(x.contract))}</td><td>${esc(safeText(x.expiry))}</td><td>${fmt(x.price)}</td>
+<td class="${pricePct>0?'up':pricePct<0?'down':'neutral'}">${pct(pricePct)}</td>
+<td>${fmt(x.oi,0)}</td><td class="${oiPct>0?'up':oiPct<0?'down':'neutral'}">${pct(oiPct)}</td>
+<td>${fmt(x.volume,0)}</td><td>${esc(safeText(x.session))}</td><td><span class="tag">${esc(safeText(x.source))}</span></td></tr>`;
+  }).join(''):'<tr><td colspan="10" style="text-align:center;padding:30px;color:#98a6c1">No matching rows.</td></tr>';
 }
 function toggleRaw(){let e=document.getElementById('raw');e.style.display=e.style.display==='block'?'none':'block';showRaw()}
 function showRaw(){document.getElementById('raw').textContent=JSON.stringify(raw.slice(-15),null,2)}
-function clearData(){DATA=[];render();document.getElementById('stockCount').textContent='0';document.getElementById('success').textContent='0';document.getElementById('fail').textContent='0';document.getElementById('dateStat').textContent='—';log('Table cleared.')}
+function clearData(){DATA=[];render();document.getElementById('stockCount').textContent='0';document.getElementById('success').textContent='0';document.getElementById('fail').textContent='0';document.getElementById('dateStat').textContent='—';document.getElementById('banner').innerHTML='🧹 <b>Table cleared.</b> You can reload the heatmap when ready.';log('Table cleared.')}
+
+loadCaches();
 </script>
 </body>
 </html>
