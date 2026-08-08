@@ -1,19 +1,245 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CE Heatmap Scanner — Upstox</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CE Heatmap Scanner — Upstox V2</title>
 <style>
-:root{--bg:#0b1020;--panel:#121a2d;--text:#edf2ff;--muted:#9aa7c2;--line:#2b3754;--accent:#5b8cff;--good:#26c281;--bad:#ff657a;--warn:#f0b429}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,Arial}.wrap{max-width:1450px;margin:auto;padding:22px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}h1{margin:0;font-size:24px}.sub,.note,.small{color:var(--muted)}.grid{display:grid;grid-template-columns:330px 1fr;gap:16px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}.panel h2{font-size:15px;margin:0 0 13px}.field{margin:11px 0}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}input,button{width:100%;border:1px solid var(--line);border-radius:8px;background:#0d1527;color:var(--text);padding:9px}button{cursor:pointer;background:var(--accent);border:0;font-weight:650}.secondary{background:#26334f}.row,.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}.stat b{font-size:20px}.stat span{display:block;color:var(--muted);font-size:11px}.section{margin-top:16px}.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:900px}.table th,.table td{padding:10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.table th:first-child,.table td:first-child{text-align:left}.table th{color:var(--muted);font-size:11px}.good{color:var(--good)}.bad{color:var(--bad)}.badge{padding:4px 7px;border-radius:6px;background:#1b3b32;color:#72e3b2;font-size:11px}.log{height:180px;overflow:auto;background:#080d18;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px monospace;white-space:pre-wrap}@media(max-width:900px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
-</style></head><body><div class="wrap"><div class="top"><div><h1>📊 CE Heatmap Scanner</h1><div class="sub">Upstox read-only market-data prototype — no order placement</div></div><div id="status">● Disconnected</div></div>
-<div class="grid"><aside><div class="panel"><h2>🔐 Upstox Connection</h2><div class="field"><label>Analytics Token (memory only)</label><input id="token" type="password" placeholder="Paste your Upstox Analytics Token"></div><div class="buttons"><button onclick="scan()">🔄 Scan Now</button><button class="secondary" onclick="testConnection()">Test API</button></div><div class="note">Do not publish your token. This page does not save it.</div></div>
-<div class="panel section"><h2>⚙️ CE Filters</h2><div class="row"><div class="field"><label>Min futures price %</label><input id="minPrice" type="number" step="0.1" value="1"></div><div class="field"><label>Top candidates</label><input id="topN" type="number" value="10"></div></div><div class="row"><div class="field"><label>Min PCR</label><input id="minPCR" type="number" step="0.01" value="0.75"></div><div class="field"><label>Max PCR</label><input id="maxPCR" type="number" step="0.01" value="1.30"></div></div><div class="field"><label><input id="requireBoth" type="checkbox" checked> Require price-gainer + OI-gainer overlap</label></div><div class="field"><label><input id="requirePCR" type="checkbox" checked> Apply PCR filter</label></div><div class="field"><label><input id="requireMaxPain" type="checkbox"> Require price above Max Pain</label></div></div>
-<div class="panel section"><h2>⏱ Refresh</h2><div class="field"><label>Auto refresh seconds (0 = off)</label><input id="refreshSec" type="number" min="0" value="60"></div><button class="secondary" onclick="toggleAuto()">Start/Stop Auto Refresh</button><div class="note">True streaming will be added later with Upstox Market Data Feed V3 through a backend.</div></div></aside>
-<main><div class="stats"><div class="stat"><b id="count">0</b><span>CE candidates</span></div><div class="stat"><b id="longs">0</b><span>Price + OI overlap</span></div><div class="stat"><b id="apiCalls">0</b><span>API calls</span></div><div class="stat"><b id="updated">—</b><span>Last update</span></div><div class="stat"><b id="mode">Refresh</b><span>Mode</span></div></div>
-<div class="panel"><h2>🔥 CE Candidates</h2><div class="small">Uses Upstox Futures Smartlists to find price/OI strength, then enriches the strongest names with option-chain PCR, ATM IV and Max Pain.</div><div class="tablewrap"><table class="table"><thead><tr><th>Stock</th><th>Future Price</th><th>Price %</th><th>OI Signal</th><th>PCR</th><th>ATM IV</th><th>Max Pain</th><th>Score</th><th>Setup</th></tr></thead><tbody id="results"><tr><td colspan="9" style="text-align:center;padding:30px">Enter token and click Scan Now.</td></tr></tbody></table></div></div>
-<div class="panel section"><h2>🧪 API Log</h2><div class="log" id="log">Ready.</div></div><div class="panel section"><div class="note"><b>Version 1:</b> scanner only. No orders. Next version: automatic universe/instrument resolution, exact futures OI-change %, IV percentile, technical filters, and a small Python backend so the token never reaches browser JavaScript.</div></div></main></div></div>
+:root{--bg:#09101d;--panel:#111b2e;--panel2:#18243b;--text:#eef3ff;--muted:#98a6c1;--line:#2a3854;--blue:#5d8dff;--green:#27c487;--yellow:#e7b84b;--red:#ff657a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,Roboto,Arial}.wrap{max-width:1500px;margin:auto;padding:22px}
+.top{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:16px}h1{font-size:24px;margin:0}.sub{color:var(--muted);margin-top:5px}.status{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
+.grid{display:grid;grid-template-columns:330px 1fr;gap:16px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}.panel h2{font-size:15px;margin:0 0 12px}
+.field{margin:10px 0}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}
+input,select,button{width:100%;border:1px solid var(--line);border-radius:8px;background:#0b1425;color:var(--text);padding:9px 10px}input[type=checkbox]{width:auto}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}
+button{cursor:pointer;background:var(--blue);border:0;font-weight:650}.secondary{background:#273652}.danger{background:#5b2634}
+.note{color:var(--muted);font-size:12px;line-height:1.5;margin-top:10px}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}.stat b{font-size:19px}.stat span{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:980px}.table th,.table td{padding:10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.table th:first-child,.table td:first-child{text-align:left}.table th{color:var(--muted);font-size:11px;text-transform:uppercase}
+.good{color:var(--green)}.warn{color:var(--yellow)}.bad{color:var(--red)}.badge{padding:4px 7px;border-radius:6px;background:#183d32;color:#72e4b4;font-size:11px}.badge.gray{background:#27334d;color:#b8c3da}
+.log{height:220px;overflow:auto;background:#070c16;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px ui-monospace,monospace;white-space:pre-wrap}.section{margin-top:16px}.small{font-size:11px;color:var(--muted)}
+.banner{display:none;padding:10px 12px;border-radius:9px;margin-bottom:16px;background:#332b16;border:1px solid #6c5b28;color:#f0d782}.banner.show{display:block}
+.raw{display:none;margin-top:12px;background:#080e19;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px ui-monospace,monospace;white-space:pre-wrap;max-height:300px;overflow:auto}
+@media(max-width:950px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1>📊 CE Heatmap Scanner — V2</h1><div class="sub">Upstox market-data scanner • read-only • no order placement</div></div>
+    <div class="status" id="status">● Disconnected</div>
+  </div>
+
+  <div class="banner" id="marketBanner"></div>
+
+  <div class="grid">
+    <aside>
+      <div class="panel">
+        <h2>🔐 Upstox</h2>
+        <div class="field"><label>Analytics Token — never share it</label><input id="token" type="password" placeholder="Paste token here"></div>
+        <div class="buttons"><button onclick="testConnection()">Test API</button><button onclick="scan()">🔄 Run Scan</button></div>
+        <div class="note">Token stays only in this page's memory. For the final version we'll move API calls to a Python backend.</div>
+      </div>
+
+      <div class="panel section">
+        <h2>📅 Data Mode</h2>
+        <div class="field"><label>Mode</label>
+          <select id="modeSelect" onchange="modeChanged()">
+            <option value="smart">Latest Smartlist (live/session)</option>
+            <option value="historical">Historical candles</option>
+            <option value="diagnostic">Diagnostics only</option>
+          </select>
+        </div>
+        <div class="field" id="dateField" style="display:none"><label>Trading date (YYYY-MM-DD)</label><input id="tradeDate" type="date"></div>
+        <div class="note">
+          When NSE is closed, Smartlist may return no ranked candidates. Historical mode is intended to verify the data pipeline against a completed session. Option-chain snapshot reconstruction is a separate step.
+        </div>
+      </div>
+
+      <div class="panel section">
+        <h2>⚙️ CE Filters</h2>
+        <div class="row">
+          <div class="field"><label>Min price %</label><input id="minPrice" type="number" step=".1" value="1"></div>
+          <div class="field"><label>Min OI %</label><input id="minOI" type="number" step=".1" value="3"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Min PCR</label><input id="minPCR" type="number" step=".01" value=".75"></div>
+          <div class="field"><label>Max PCR</label><input id="maxPCR" type="number" step=".01" value="1.30"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Max IVP</label><input id="maxIVP" type="number" step="1" value="70"></div>
+          <div class="field"><label>Top N</label><input id="topN" type="number" step="1" value="10"></div>
+        </div>
+        <div class="field"><label><input id="requireBoth" type="checkbox" checked> Require price-gainer + OI-gainer overlap</label></div>
+        <div class="field"><label><input id="requirePCR" type="checkbox" checked> Apply PCR filter when available</label></div>
+        <div class="field"><label><input id="requireMaxPain" type="checkbox"> Require price above Max Pain</label></div>
+        <button class="secondary" onclick="saveFilters()">Save filter values for this tab</button>
+      </div>
+
+      <div class="panel section">
+        <h2>🧪 Diagnostics</h2>
+        <button class="secondary" onclick="toggleRaw()">Show/Hide raw API diagnostics</button>
+        <div class="note">Use this when comparing values with Sensibull. It helps us identify whether a mismatch is data, symbol mapping, or calculation logic.</div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="stats">
+        <div class="stat"><b id="count">0</b><span>CE candidates</span></div>
+        <div class="stat"><b id="overlap">0</b><span>Price + OI overlap</span></div>
+        <div class="stat"><b id="apiCalls">0</b><span>API calls</span></div>
+        <div class="stat"><b id="updated">—</b><span>Last update</span></div>
+        <div class="stat"><b id="dataMode">—</b><span>Data mode</span></div>
+      </div>
+
+      <div class="panel">
+        <h2>🔥 CE Candidates</h2>
+        <div class="small" id="description">Enter token and run a scan.</div>
+        <div class="tablewrap">
+          <table class="table">
+            <thead><tr><th>Stock</th><th>Price</th><th>Price %</th><th>OI %</th><th>Setup</th><th>PCR</th><th>ATM IV</th><th>Max Pain</th><th>Score</th></tr></thead>
+            <tbody id="results"><tr><td colspan="9" style="text-align:center;color:#98a6c1;padding:30px">Waiting for scan.</td></tr></tbody>
+          </table>
+        </div>
+        <div class="raw" id="raw"></div>
+      </div>
+
+      <div class="panel section"><h2>📝 API Log</h2><div class="log" id="log">Ready.</div></div>
+    </main>
+  </div>
+</div>
+
 <script>
-const API='https://api.upstox.com/v2';let calls=0,timer=null;const $=id=>document.getElementById(id);function log(s){$('log').textContent+='\n'+new Date().toLocaleTimeString()+'  '+s;$('log').scrollTop=$('log').scrollHeight}function status(s,ok=false){$('status').textContent='● '+s;$('status').style.color=ok?'#26c281':'#ff657a'}function tok(){return $('token').value.trim()}function hdr(){return {'Accept':'application/json','Authorization':'Bearer '+tok()}}async function api(path){calls++;$('apiCalls').textContent=calls;const r=await fetch(API+path,{headers:hdr()});const t=await r.text();let d;try{d=JSON.parse(t)}catch{throw Error('Non-JSON response '+r.status)}if(!r.ok)throw Error(d?.errors?.[0]?.message||d?.message||('HTTP '+r.status));return d}function items(d){return Array.isArray(d?.data)?d.data:(Array.isArray(d?.data?.data)?d.data.data:[])}function n(v){return Number.isFinite(Number(v))?Number(v):null}function first(o,ks){for(const k of ks)if(o?.[k]!=null)return o[k];return null}
-async function testConnection(){if(!tok())return alert('Paste your Analytics Token first.');try{status('Connecting…');const d=await api('/market/status/NSE');log('Market status OK: '+JSON.stringify(d).slice(0,300));status('Connected',true)}catch(e){status('API error');log('ERROR: '+e.message);alert(e.message)}}
-async function smart(cat){return api('/market/smartlist/futures?asset_type=STOCK&category='+cat+'&page_number=1&page_size=50')}function norm(x,source){return{raw:x,key:first(x,['instrument_key','instrument_token']),underlying:first(x,['underlying_key']),sym:first(x,['underlying_symbol','symbol','trading_symbol','name'])||'—',price:n(first(x,['last_price','price','ltp'])),pct:n(first(x,['net_change_percent','change_percent','percent_change','price_change_percent'])),source}}
-async function optionData(key){if(!key)return{};const c=await api('/option/chain?instrument_key='+encodeURIComponent(key)+'&expiry_date=current_month');const rows=items(c);if(!rows.length)return{};const spot=n(first(rows[0],['underlying_spot_price','spot_price']));let atm=rows[0],best=1e99;for(const r of rows){const s=n(r.strike_price);if(s!=null&&spot!=null&&Math.abs(s-spot)<best){best=Math.abs(s-spot);atm=r}}const cg=atm?.call_options?.option_greeks||{},pg=atm?.put_options?.option_greeks||{};const iv=n(first(cg,['iv']))??n(first(pg,['iv']));const pcr=n(atm?.pcr);let maxPain=null;try{const date=new Date().toISOString().slice(0,10);const mp=await api('/market/max-pain?instrument_key='+encodeURIComponent(key)+'&expiry=current_month&date='+date+'&bucket_interval=60');maxPain=n(mp?.data?.max_pain)}catch(e){log('Max Pain unavailable: '+e.message)}return{spot,pcr,iv,maxPain,atmStrike:n(atm?.strike_price)}}
-async function scan(){if(!tok())return alert('Paste your Analytics Token first.');$('results').innerHTML='<tr><td colspan="9" style="text-align:center;padding:30px">Scanning…</td></tr>';calls=0;$('apiCalls').textContent=0;status('Scanning…');log('Starting scan.');try{const[pg,og]=await Promise.all([smart('PRICE_GAINERS'),smart('OI_GAINERS')]);const prices=items(pg).map(x=>norm(x,'price')),ois=items(og).map(x=>norm(x,'oi')),map=new Map(ois.map(x=>[x.key||x.sym,x]));let cs=prices.map(p=>({...p,oiRow:map.get(p.key||p.sym)}));if($('requireBoth').checked)cs=cs.filter(x=>x.oiRow);cs=cs.filter(x=>x.pct==null||x.pct>=Number($('minPrice').value));cs=cs.slice(0,Math.max(10,Number($('topN').value)*2));let out=[];for(const c of cs){let od={};try{od=await optionData(c.underlying||c.oiRow?.underlying)}catch(e){log(c.sym+' option data: '+e.message)}const pcrOk=od.pcr==null||(od.pcr>=Number($('minPCR').value)&&od.pcr<=Number($('maxPCR').value));const mpOk=od.maxPain==null||c.price==null||c.price>od.maxPain;if($('requirePCR').checked&&!pcrOk)continue;if($('requireMaxPain').checked&&!mpOk)continue;let score=0;if(c.pct>0)score+=2;if(c.oiRow)score+=3;if(od.pcr!=null&&pcrOk)score+=2;if(od.iv!=null)score++;if(od.maxPain!=null&&mpOk)score++;out.push({...c,...od,score});if(out.length>=Number($('topN').value))break}out.sort((a,b)=>b.score-a.score);render(out);$('count').textContent=out.length;$('longs').textContent=out.filter(x=>x.oiRow).length;$('updated').textContent=new Date().toLocaleTimeString();status('Connected',true);log('Scan complete: '+out.length+' candidates.')}catch(e){status('Error');log('SCAN ERROR: '+e.message);$('results').innerHTML='<tr><td colspan="9" style="text-align:center;color:#ff657a;padding:30px">'+e.message+'</td></tr>'}}
-function render(rows){if(!rows.length){$('results').innerHTML='<tr><td colspan="9" style="text-align:center;color:#f0b429;padding:30px">No stocks matched the filters.</td></tr>';return}$('results').innerHTML=rows.map(x=>`<tr><td><b>${x.sym}</b></td><td>${x.price==null?'—':x.price.toFixed(2)}</td><td class="${x.pct>=0?'good':'bad'}">${x.pct==null?'—':(x.pct>=0?'+':'')+x.pct.toFixed(2)+'%'}</td><td><span class="badge">${x.oiRow?'OI GAINER':'—'}</span></td><td>${x.pcr==null?'—':x.pcr.toFixed(2)}</td><td>${x.iv==null?'—':x.iv.toFixed(1)}</td><td>${x.maxPain==null?'—':x.maxPain.toFixed(2)}</td><td><b>${x.score}/9</b></td><td><span class="badge">CE WATCH</span></td></tr>`).join('')}
-function toggleAuto(){if(timer){clearInterval(timer);timer=null;$('mode').textContent='Refresh';log('Auto refresh stopped.')}else{const s=Math.max(15,Number($('refreshSec').value)||60);timer=setInterval(scan,s*1000);$('mode').textContent='Auto';log('Auto refresh every '+s+' seconds');scan()}}
-</script></body></html>
+const API='https://api.upstox.com/v2';
+let calls=0, rawLog=[];
+
+function log(s){const e=document.getElementById('log');e.textContent+='\\n'+new Date().toLocaleTimeString()+'  '+s;e.scrollTop=e.scrollHeight}
+function status(s,good=false){const e=document.getElementById('status');e.textContent='● '+s;e.style.color=good?'#27c487':'#ff657a'}
+function token(){return document.getElementById('token').value.trim()}
+function headers(){return {'Accept':'application/json','Authorization':'Bearer '+token()}}
+function n(v){return v===null||v===undefined||v===''||isNaN(Number(v))?null:Number(v)}
+function first(o,ks){for(const k of ks)if(o&&o[k]!==undefined&&o[k]!==null)return o[k];return null}
+function items(d){return Array.isArray(d?.data)?d.data:(Array.isArray(d?.data?.data)?d.data.data:[])}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+async function api(path,label='API'){
+  calls++;document.getElementById('apiCalls').textContent=calls;
+  const r=await fetch(API+path,{headers:headers()});const text=await r.text();
+  let d;try{d=JSON.parse(text)}catch{throw Error(label+' returned non-JSON HTTP '+r.status)}
+  rawLog.push({label,path,status:r.status,response:d});
+  if(!r.ok)throw Error((d.errors?.[0]?.message)||d.message||label+' HTTP '+r.status);
+  return d;
+}
+
+function modeChanged(){document.getElementById('dateField').style.display=document.getElementById('modeSelect').value==='historical'?'block':'none'}
+
+async function testConnection(){
+  if(!token())return alert('Paste your Upstox Analytics Token first.');
+  try{
+    status('Connecting…');const d=await api('/market/status/NSE','Market status');
+    const s=d?.data?.status||'UNKNOWN';
+    document.getElementById('marketBanner').className='banner show';
+    document.getElementById('marketBanner').textContent=(s==='NORMAL'?'🟢 NSE MARKET OPEN':'🟡 NSE MARKET CLOSED — '+s+'. Use Historical mode to test a completed session.');
+    log('Market status: '+s+' | last_updated='+d?.data?.last_updated);status('Connected',true);
+  }catch(e){status('Error');log('ERROR: '+e.message);alert(e.message)}
+}
+
+async function smart(category){
+  return api('/market/smartlist/futures?asset_type=STOCK&category='+encodeURIComponent(category)+'&page_number=1&page_size=100','Smartlist '+category)
+}
+function norm(x,source){
+  return {
+    raw:x,source,
+    key:first(x,['instrument_key','instrument_token']),
+    underlying:first(x,['underlying_key']),
+    sym:first(x,['underlying_symbol','symbol','trading_symbol','name'])||'—',
+    price:n(first(x,['last_price','price','ltp','actual_price'])),
+    pct:n(first(x,['net_change_percent','change_percent','percent_change','price_change_percent'])),
+    oi:n(first(x,['open_interest','oi'])),
+    oiPct:n(first(x,['oi_change_percent','change_in_oi_percent','open_interest_change_percent']))
+  }
+}
+
+/* Historical mode: this intentionally validates that Upstox historical data is reachable.
+   Exact F&O/OI reconstruction requires instrument keys and the appropriate expired/current
+   contract. We do not pretend a simple equity candle is the same as futures OI. */
+async function historicalTest(){
+  const date=document.getElementById('tradeDate').value;
+  if(!date)throw Error('Choose a trading date.');
+  const sample='NSE_INDEX|Nifty 50';
+  const to=date, from=date;
+  const path='/historical-candle/'+encodeURIComponent(sample)+'/1day/'+to+'/'+from;
+  try{
+    const d=await api(path,'Historical candle');
+    const candles=items(d);
+    log('Historical candle request succeeded. Rows: '+candles.length);
+    document.getElementById('description').textContent='Historical API connectivity verified for '+date+'. Exact stock-futures OI/option-chain snapshot requires contract-specific instrument keys.';
+    return {candles};
+  }catch(e){
+    log('Historical test failed: '+e.message);
+    throw e;
+  }
+}
+
+async function scan(){
+  if(!token())return alert('Paste your Upstox Analytics Token first.');
+  rawLog=[];calls=0;document.getElementById('apiCalls').textContent='0';
+  document.getElementById('results').innerHTML='<tr><td colspan="9" style="text-align:center;padding:30px">Scanning…</td></tr>';
+  status('Scanning…');log('Starting scan.');
+  const mode=document.getElementById('modeSelect').value;
+  document.getElementById('dataMode').textContent=mode==='smart'?'Smartlist':mode==='historical'?'Historical':'Diagnostics';
+  try{
+    if(mode==='diagnostic'){
+      await testConnection();showRaw();return;
+    }
+    if(mode==='historical'){
+      const d=await historicalTest();
+      document.getElementById('count').textContent='—';document.getElementById('overlap').textContent='—';
+      document.getElementById('updated').textContent=new Date().toLocaleTimeString();
+      status('Connected',true);showRaw();return;
+    }
+
+    const [pg,og]=await Promise.all([smart('PRICE_GAINERS'),smart('OI_GAINERS')]);
+    const prices=items(pg).map(x=>norm(x,'price')), ois=items(og).map(x=>norm(x,'oi'));
+    const om=new Map(ois.map(x=>[x.key||x.sym,x]));
+    let c=prices.map(p=>({...p,oiRow:om.get(p.key||p.sym)}));
+    const initial=c.length;
+    if(document.getElementById('requireBoth').checked)c=c.filter(x=>x.oiRow);
+    c=c.filter(x=>x.pct==null||x.pct>=Number(document.getElementById('minPrice').value));
+    c=c.slice(0,Math.max(10,Number(document.getElementById('topN').value)*3));
+    document.getElementById('overlap').textContent=c.length;
+    log('Price gainers='+prices.length+', OI gainers='+ois.length+', overlap after filters='+c.length);
+
+    /* V2 deliberately does not fabricate PCR/IV/Max Pain from missing snapshots.
+       We'll add exact contract-specific option-chain enrichment once instrument mapping is confirmed. */
+    const rows=c.slice(0,Number(document.getElementById('topN').value)).map(x=>{
+      let score=0;if(x.pct!=null&&x.pct>0)score+=2;if(x.oiRow)score+=3;
+      return {...x,score,pcr:null,iv:null,maxPain:null}
+    });
+    render(rows);
+    document.getElementById('count').textContent=rows.length;
+    document.getElementById('updated').textContent=new Date().toLocaleTimeString();
+    document.getElementById('description').textContent='Smartlist scan completed. Option-chain enrichment is intentionally disabled until we confirm the exact Upstox instrument-key mapping.';
+    status('Connected',true);log('Scan complete: '+rows.length+' candidates from '+initial+' price-gainer records.');
+    showRaw();
+  }catch(e){
+    status('Error');log('SCAN ERROR: '+e.message);
+    document.getElementById('results').innerHTML='<tr><td colspan="9" style="text-align:center;color:#ff657a;padding:30px">'+esc(e.message)+'</td></tr>';
+    showRaw();
+  }
+}
+
+function render(rows){
+  if(!rows.length){document.getElementById('results').innerHTML='<tr><td colspan="9" style="text-align:center;color:#e7b84b;padding:30px">No candidates returned for this mode/date. Try Historical mode or lower filters.</td></tr>';return}
+  document.getElementById('results').innerHTML=rows.map(x=>{
+    const pct=x.pct==null?'—':(x.pct>=0?'+':'')+x.pct.toFixed(2)+'%';
+    const oiPct=x.oiRow?.oiPct!=null?x.oiRow.oiPct.toFixed(2)+'%':'—';
+    return `<tr><td><b>${esc(x.sym)}</b></td><td>${x.price==null?'—':x.price.toFixed(2)}</td><td class="good">${pct}</td><td>${oiPct}</td><td><span class="badge">LONG BUILDUP WATCH</span></td><td>${x.pcr==null?'—':x.pcr.toFixed(2)}</td><td>${x.iv==null?'—':x.iv.toFixed(1)}</td><td>${x.maxPain==null?'—':x.maxPain.toFixed(2)}</td><td><b>${x.score}/5</b></td></tr>`
+  }).join('')
+}
+function saveFilters(){log('Filter values saved for this tab.')}
+function toggleRaw(){const e=document.getElementById('raw');e.style.display=e.style.display==='block'?'none':'block';showRaw()}
+function showRaw(){document.getElementById('raw').textContent=JSON.stringify(rawLog,null,2)}
+</script>
+</body>
+</html>
